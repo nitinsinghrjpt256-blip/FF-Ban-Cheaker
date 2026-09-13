@@ -15,38 +15,42 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-DEFAULT_LANG = "en"
-user_languages = {}
-nomBot = "None"
+nomBot = "PX Ban Checker"
 
 @app.route('/')
 def home():
-    global nomBot
-    return f"Bot {nomBot} is working"
+    return f"Bot {nomBot} is running healthy!"
+
+@app.route('/healthz')
+def health():
+    return "OK", 200
 
 def run_flask():
     port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
 
-threading.Thread(target=run_flask, daemon=True).start()
+# Background Flask server for Render keep-alive
+flask_thread = threading.Thread(target=run_flask, daemon=True)
+flask_thread.start()
 
 @bot.event
 async def on_ready():
     global nomBot
     nomBot = f"{bot.user}"
-    print(f"Bot connected as {bot.user}")
+    print(f"[ONLINE] Logged in as {bot.user}")
 
 @bot.command(name="check", aliases=["ID", "id"])
 async def check_ban_command(ctx, user_id: str = None):
     if not user_id or not user_id.isdigit():
-        await ctx.send(f"{ctx.author.mention} ❌ **Invalid UID!**\n➡️ Please use: `!check 123456789`")
+        await ctx.send(f"{ctx.author.mention} ❌ **Invalid UID!**\n➡️ Format: `!check 123456789`")
         return
 
     async with ctx.typing():
-        ban_status = await check_ban(user_id)
+        ban_status, error_msg = await check_ban(user_id)
 
         if ban_status is None:
-            await ctx.send(f"{ctx.author.mention} ❌ **Could not get information. Please try again later.**")
+            err_detail = f" (`{error_msg}`)" if error_msg else ""
+            await ctx.send(f"{ctx.author.mention} ❌ **Could not get information.**{err_detail}\nPlease try again later.")
             return
 
         is_banned = int(ban_status.get("is_banned", 0))
@@ -62,6 +66,7 @@ async def check_ban_command(ctx, user_id: str = None):
             timestamp=ctx.message.created_at
         )
 
+        file = None
         if is_banned:
             embed.title = "**▌ Banned Account 🛑 **"
             embed.description = (
@@ -71,8 +76,9 @@ async def check_ban_command(ctx, user_id: str = None):
                 f"**• Player ID :** `{id_str}`\n"
                 f"**• Region :** `{region}`"
             )
-            file = discord.File("assets/banned.gif", filename="banned.gif")
-            embed.set_image(url="attachment://banned.gif")
+            if os.path.exists("assets/banned.gif"):
+                file = discord.File("assets/banned.gif", filename="banned.gif")
+                embed.set_image(url="attachment://banned.gif")
         else:
             embed.title = "**▌ Clean Account ✅ **"
             embed.description = (
@@ -81,11 +87,20 @@ async def check_ban_command(ctx, user_id: str = None):
                 f"**• Player ID :** `{id_str}`\n"
                 f"**• Region :** `{region}`"
             )
-            file = discord.File("assets/notbanned.gif", filename="notbanned.gif")
-            embed.set_image(url="attachment://notbanned.gif")
+            if os.path.exists("assets/notbanned.gif"):
+                file = discord.File("assets/notbanned.gif", filename="notbanned.gif")
+                embed.set_image(url="attachment://notbanned.gif")
 
         embed.set_thumbnail(url=ctx.author.display_avatar.url)
         embed.set_footer(text="DEVELOPED BY PERSISTX•")
-        await ctx.send(f"{ctx.author.mention}", embed=embed, file=file)
 
-bot.run(TOKEN)
+        if file:
+            await ctx.send(f"{ctx.author.mention}", embed=embed, file=file)
+        else:
+            await ctx.send(f"{ctx.author.mention}", embed=embed)
+
+if __name__ == "__main__":
+    if not TOKEN:
+        print("ERROR: TOKEN environment variable is missing!")
+    else:
+        bot.run(TOKEN)
