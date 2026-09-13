@@ -5,12 +5,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-async def check_ban(uid: str) -> dict | None:
+async def check_ban(uid: str) -> tuple[dict | None, str | None]:
     api_url = f"http://raw.thug4ff.xyz/check_ban/{uid}/great"
-    timeout = aiohttp.ClientTimeout(total=10)
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+    }
+    timeout = aiohttp.ClientTimeout(total=15)
 
     try:
-        async with aiohttp.ClientSession(timeout=timeout) as session:
+        async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
             async with session.get(api_url) as response:
                 if response.status == 200:
                     response_data = await response.json()
@@ -21,8 +24,13 @@ async def check_ban(uid: str) -> dict | None:
                             "nickname": data.get("nickname", "NA"),
                             "period": data.get("period", 0),
                             "region": data.get("region", "N/A")
-                        }
-                return None
+                        }, None
+                    return None, "Empty data received"
+                else:
+                    return None, f"API Status {response.status}"
+    except asyncio.TimeoutError:
+        return None, "API Timeout"
+    except aiohttp.ClientError as e:
+        return None, f"Network Error: {type(e).__name__}"
     except Exception as e:
-        print(f"API request failed for UID {uid}: {e}")
-        return None
+        return None, str(e)
