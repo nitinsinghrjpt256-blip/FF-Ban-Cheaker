@@ -27,7 +27,9 @@ def home():
     return f"Bot {nomBot} is working"
 
 def run_flask():
-    app.run(host='0.0.0.0', port=10000)
+    # Render PORT support
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
 
 threading.Thread(target=run_flask).start()
 
@@ -111,7 +113,6 @@ async def check_ban_command(ctx):
                 f"**• {'Player ID' if lang == 'en' else 'ID du joueur'} :** `{id_str}`\n"
                 f"**• {'Region' if lang == 'en' else 'Région'} :** `{region}`"
             )
-            # embed.set_image(url="https://i.ibb.co/wFxTy8TZ/banned.gif")
             file = discord.File("assets/banned.gif", filename="banned.gif")
             embed.set_image(url="attachment://banned.gif")
         else:
@@ -123,12 +124,11 @@ async def check_ban_command(ctx):
                 f"**• {'Player ID' if lang == 'en' else 'ID du joueur'} :** `{id_str}`\n"
                 f"**• {'Region' if lang == 'en' else 'Région'} :** `{region}`"
             )
-            # embed.set_image(url="https://i.ibb.co/Kx1RYVKZ/notbanned.gif")
             file = discord.File("assets/notbanned.gif", filename="notbanned.gif")
             embed.set_image(url="attachment://notbanned.gif")
 
         embed.set_thumbnail(url=ctx.author.avatar.url if ctx.author.avatar else ctx.author.default_avatar.url)
-        embed.set_footer(text="DEVELOPED BY THUG•")
-        await ctx.send(f"{ctx.author.mention}", embed=embed ,file=file)
+        embed.set_footer(text="DEVELOPED BY PERSISTX•")
+        await ctx.send(f"{ctx.author.mention}", embed=embed, file=file)
 
 bot.run(TOKEN)
